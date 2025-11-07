@@ -44,14 +44,22 @@ A modern web application for displaying cryptocurrency Indices and Indicators wi
    
    Create a `.env.local` file in the root directory:
    ```env
+   # Required: TokenMetrics API Key
+   # Get your free API key from: https://developers.tokenmetrics.com
    TOKENMETRICS_API_KEY=your_api_key_here
-   TOKENMETRICS_API_URL=https://api.tokenmetrics.com
+   
+   # Required: TokenMetrics API Base URL (v2)
+   TOKENMETRICS_API_URL=https://api.tokenmetrics.com/v2
    
    # Optional: WebSocket URL for real-time updates
    NEXT_PUBLIC_WS_URL=wss://ws.tokenmetrics.com
    ```
 
-   **Note**: The `.env.local` file is gitignored for security. Use `.env.example` as a template.
+   **Important Notes**:
+   - The `.env.local` file is gitignored for security (never commit API keys!)
+   - Get your free API key from [TokenMetrics Developer Portal](https://developers.tokenmetrics.com)
+   - Free plan includes: 500 API calls/month, 20 requests/minute
+   - The app uses provider-fallback pattern: tries real API first, falls back to mock data if unavailable
 
 4. **Run the development server**:
    ```bash
@@ -117,7 +125,7 @@ Make sure to set the environment variables in your platform's configuration.
 
 ### Overview
 
-The application implements a multi-layered caching strategy to optimize API usage while respecting rate limits and ensuring data freshness.
+The application implements a **multi-layered caching strategy** to optimize API usage while respecting rate limits and ensuring data freshness. This is critical for staying within the free plan limits (20 requests/minute, 500 calls/month).
 
 ### Cache Implementation
 
@@ -125,59 +133,189 @@ The application implements a multi-layered caching strategy to optimize API usag
 
 **Key Features**:
 - **TTL (Time To Live)**: Random between 60-120 seconds per request
-  - Prevents cache stampede (all requests expiring simultaneously)
-  - Ensures data refreshes within the required timeframe
-- **In-Memory Cache**: Uses a `Map` data structure for fast lookups
+  - **Why random?** Prevents cache stampede (all requests expiring simultaneously)
+  - Ensures data refreshes within the required timeframe (60-120 seconds)
+  - Each cached response gets a unique expiration time
+- **In-Memory Cache**: Uses a `Map` data structure for fast O(1) lookups
 - **Automatic Expiration**: Cache entries automatically expire and are cleaned up
+- **Cache Key Generation**: Based on endpoint + query parameters for uniqueness
 
-### Cache Flow
+### Cache Flow Diagram
 
 ```
-1. Client Request → API Route
-2. API Route → API Client
-3. API Client checks cache:
-   ├─ Cache Hit → Return cached data (no API call)
-   └─ Cache Miss → Check rate limits → Make API call → Cache response
+┌─────────────────┐
+│  Client Request │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  API Route      │ (/api/indices or /api/indicators)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  API Client     │
+└────────┬────────┘
+         │
+         ▼
+    ┌─────────┐
+    │ Check   │
+    │ Cache   │
+    └────┬────┘
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+┌──────┐  ┌──────────┐
+│ HIT  │  │   MISS   │
+└──┬───┘  └────┬─────┘
+   │           │
+   │           ▼
+   │      ┌─────────────┐
+   │      │ Check Rate  │
+   │      │ Limits      │
+   │      └──────┬──────┘
+   │             │
+   │             ▼
+   │      ┌─────────────┐
+   │      │ Make API    │
+   │      │ Call        │
+   │      └──────┬──────┘
+   │             │
+   │             ▼
+   │      ┌─────────────┐
+   │      │ Cache       │
+   │      │ Response    │
+   │      └──────┬──────┘
+   │             │
+   └─────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Return Data     │
+└─────────────────┘
 ```
 
 ### Cache Key Structure
 
 Cache keys are generated from:
-- Endpoint path (e.g., `/indices`, `/indicators`)
-- Query parameters (e.g., `?id=btc-dominance&details=true`)
+- **Endpoint path** (e.g., `/tokens`, `/trading-signals`)
+- **Query parameters** (e.g., `?id=btc-dominance&details=true`)
 
-Example: `indices:{"id":"btc-dominance","details":true}`
+**Example Cache Keys**:
+```
+tokens:{}
+trading-signals:{}
+indices:{"id":"btc-dominance","details":true}
+```
 
-### Rate Limiting
+**Implementation**:
+```typescript
+// From lib/api-client.ts
+private getCacheKey(endpoint: string, params?: any): string {
+  return `${endpoint}:${JSON.stringify(params || {})}`;
+}
+```
 
-The application enforces two levels of rate limiting:
+### Rate Limiting Strategy
 
-1. **Per-Minute Limit**: 20 requests/minute
-   - Tracks requests in a sliding window
-   - Automatically cleans up old request timestamps
+The application enforces **two levels of rate limiting** to respect TokenMetrics API plan limits:
 
-2. **Monthly Limit**: 500 calls/month
-   - Resets automatically at the start of each month
-   - Tracks total API calls made
+#### 1. Per-Minute Limit: 20 requests/minute
+- **Implementation**: Sliding window algorithm
+- Tracks request timestamps in an array
+- Automatically cleans up timestamps older than 1 minute
+- Blocks requests if 20+ requests made in the last 60 seconds
 
-### Cache Benefits
+#### 2. Monthly Limit: 500 calls/month
+- **Implementation**: Counter with automatic monthly reset
+- Tracks total API calls made in current month
+- Resets automatically at the start of each month
+- Blocks requests if monthly limit reached
 
-- ✅ Reduces API calls by ~80-90% (depending on traffic)
-- ✅ Faster response times for users
-- ✅ Prevents hitting rate limits
-- ✅ Cost-effective (stays within free tier limits)
+**Rate Limit Check Flow**:
+```typescript
+1. Check monthly limit (500 calls/month)
+   └─ If exceeded → Return error
+   
+2. Clean old requests (older than 1 minute)
+   
+3. Check per-minute limit (20 requests/minute)
+   └─ If exceeded → Return error
+   
+4. Allow request → Make API call → Update counters
+```
+
+### Cache Benefits & Performance
+
+- ✅ **Reduces API calls by 80-90%** (depending on traffic patterns)
+- ✅ **Faster response times** (cached responses are instant)
+- ✅ **Prevents hitting rate limits** (stays well within free tier)
+- ✅ **Cost-effective** (minimal API usage)
+- ✅ **Better user experience** (faster page loads)
 
 ### Cache Invalidation
 
 Caches are automatically invalidated when:
-- TTL expires (60-120 seconds)
-- Server restarts (in-memory cache is cleared)
 
-To manually clear cache (for development):
+1. **TTL Expires** (60-120 seconds)
+   - Each cache entry has a unique expiration time
+   - Expired entries are removed on next access
+
+2. **Server Restart**
+   - In-memory cache is cleared (all data lost)
+   - Fresh cache starts on next request
+
+3. **Manual Clear** (for development/testing):
+   ```typescript
+   import { getAPIClient } from '@/lib/api-client';
+   const client = getAPIClient();
+   client.clearCache();
+   ```
+
+### Provider-Fallback Pattern
+
+The application uses a **provider-fallback pattern** for maximum reliability:
+
+```
+1. Try Real API First
+   ├─ Check if API key is configured
+   ├─ Attempt to fetch from TokenMetrics API
+   └─ Transform API response to app format
+   
+2. If API Fails
+   ├─ Log error for debugging
+   └─ Fall through to mock data
+   
+3. Mock Data Fallback (Always Available)
+   ├─ generateMockIndices() - for indices
+   ├─ generateMockIndicators() - for indicators
+   └─ generate30DayData() - for 30-day detail view
+```
+
+**Benefits**:
+- ✅ App works even without API key (uses mock data)
+- ✅ App works even if API is down (graceful degradation)
+- ✅ App works even if API key is invalid (falls back to mock)
+- ✅ Clear source indication (`source: 'api'` or `source: 'mock'`)
+
+### Configuration
+
+Cache settings are configured in `lib/config.ts`:
+
 ```typescript
-import { getAPIClient } from '@/lib/api-client';
-const client = getAPIClient();
-client.clearCache();
+cache: {
+  ttlMin: 60,  // Minimum cache time in seconds
+  ttlMax: 120, // Maximum cache time in seconds
+}
+```
+
+Rate limit settings:
+```typescript
+rateLimit: {
+  maxRequestsPerMinute: 20,  // Matches TokenMetrics free plan
+  maxMonthlyCalls: 500,      // Matches TokenMetrics free plan
+}
 ```
 
 ## API Routes
@@ -295,53 +433,106 @@ market-app_tokenmetrics/
 
 ## Development Notes
 
-### Mock Data
+### Real API Integration
 
-Currently, the application uses mock data generators for demonstration purposes. To connect to the actual TokenMetrics API:
+The application **automatically uses real TokenMetrics API data** when:
+- API key is configured in `.env.local`
+- API key is valid and has access to endpoints
+- API endpoints are accessible
 
-1. Update the API routes in `app/api/indices/route.ts` and `app/api/indicators/route.ts`
-2. Replace mock data generation with actual API calls:
-   ```typescript
-   // Replace this:
-   const indices = generateMockIndices();
-   
-   // With this:
-   const indices = await apiClient.request<Index[]>('/indices');
-   ```
+**Current Implementation**:
+- **Indices**: Uses `/tokens` endpoint (available on free plan)
+- **Indicators**: Uses `/trading-signals` endpoint (available on free plan)
+- **Provider-Fallback**: Automatically falls back to mock data if API fails
+
+### Mock Data (Fallback)
+
+Mock data generators are **always available** as a fallback:
+- Used when API key is not configured
+- Used when API calls fail
+- Used when API endpoints are unavailable
+- Ensures app always works, even without API access
+
+**Mock Data Functions**:
+- `generateMockIndices()` - Generates sample index data
+- `generateMockIndicators()` - Generates sample indicator data
+- `generate30DayData()` - Generates 30-day historical data
+
+**To Force Mock Data Mode**:
+- Remove or comment out `TOKENMETRICS_API_KEY` in `.env.local`
+- App will automatically use mock data
 
 ### API Response Format
 
-The application expects API responses in the following format:
+The application transforms TokenMetrics API responses to match the app's format:
 
-**Indices**:
+**TokenMetrics API Response** (`/tokens` endpoint):
 ```json
 {
+  "success": true,
+  "message": "Success",
+  "length": 50,
   "data": [
     {
-      "id": "btc-dominance",
-      "name": "Bitcoin Dominance",
-      "symbol": "BTC.D",
-      "value": 52.34,
-      "change24h": 1.2,
-      "changePercent24h": 2.35
+      "TOKEN_ID": 1,
+      "TOKEN_NAME": "Bitcoin",
+      "TOKEN_SYMBOL": "BTC",
+      "CURRENT_PRICE": 43250.50,
+      "PRICE_CHANGE_PERCENTAGE_24H_IN_CURRENCY": 2.35,
+      "MARKET_CAP": 850000000000
     }
   ]
 }
 ```
 
-**Indicators**:
+**Transformed to App Format**:
 ```json
 {
   "data": [
     {
-      "id": "rsi-btc",
-      "name": "RSI (14) - Bitcoin",
-      "category": "Momentum",
-      "value": 58.5,
-      "signal": "bullish",
-      "timestamp": "2024-01-15T10:30:00.000Z"
+      "id": "btc",
+      "name": "Bitcoin",
+      "symbol": "BTC",
+      "value": 43250.50,
+      "change24h": 1016.39,
+      "changePercent24h": 2.35
+    }
+  ],
+  "source": "api"
+}
+```
+
+**Trading Signals API Response** (`/trading-signals` endpoint):
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "TOKEN_ID": 1,
+      "TOKEN_NAME": "Bitcoin",
+      "TOKEN_SYMBOL": "BTC",
+      "TRADING_SIGNAL": 1,
+      "TM_TRADER_GRADE": "A",
+      "DATE": "2025-11-06T00:00:00.000Z"
     }
   ]
+}
+```
+
+**Transformed to App Format**:
+```json
+{
+  "data": [
+    {
+      "id": "btc",
+      "name": "Bitcoin - BTC",
+      "category": "Trading Signal",
+      "value": "A",
+      "signal": "bullish",
+      "timestamp": "2025-11-06T00:00:00.000Z"
+    }
+  ],
+  "source": "api"
 }
 ```
 
