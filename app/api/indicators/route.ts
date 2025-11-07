@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
         if (indicatorId) {
           // Try to get specific indicator from API
           console.log(`[API] Attempting to fetch indicator: ${indicatorId}`);
-          const response = await apiClient.request(`/indicators/${indicatorId}${includeDetails ? '?details=true' : ''}`);
+          const response: any = await apiClient.request(`/indicators/${indicatorId}${includeDetails ? '?details=true' : ''}`);
           console.log(`[API] Response received for indicator ${indicatorId}:`, response ? 'Success' : 'No data');
           
           if (response && response.data) {

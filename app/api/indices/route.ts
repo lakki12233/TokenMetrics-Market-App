@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
         if (indexId) {
           // Try to get specific index from API
           console.log(`[API] Attempting to fetch index: ${indexId}`);
-          const response = await apiClient.request(`/indices/${indexId}${includeDetails ? '?details=true' : ''}`);
+          const response: any = await apiClient.request(`/indices/${indexId}${includeDetails ? '?details=true' : ''}`);
           console.log(`[API] Response received for index ${indexId}:`, response ? 'Success' : 'No data');
           
           if (response && response.data) {

@@ -20,6 +20,7 @@ export default function Home() {
     fetchRateLimitInfo();
     const interval = setInterval(fetchRateLimitInfo, 30000); // Update every 30 seconds
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
