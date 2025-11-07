@@ -77,13 +77,31 @@ npm start
 
 ### Vercel (Recommended)
 
-1. Push your code to GitHub
-2. Import your repository in Vercel
-3. Add environment variables in Vercel dashboard:
-   - `TOKENMETRICS_API_KEY`
-   - `TOKENMETRICS_API_URL`
-   - `NEXT_PUBLIC_WS_URL` (optional)
-4. Deploy!
+1. ✅ **Code is already on GitHub**: https://github.com/lakki12233/TokenMetrics-Market-App.git
+
+2. **Deploy to Vercel**:
+   - Go to [vercel.com](https://vercel.com) and sign in
+   - Click "Add New Project"
+   - Import your GitHub repository: `lakki12233/TokenMetrics-Market-App`
+   - Vercel will auto-detect Next.js
+
+3. **Add Environment Variables** (IMPORTANT):
+   - In Vercel project settings → Environment Variables
+   - Add these variables:
+     ```
+     TOKENMETRICS_API_KEY=tm-a552af75-095c-45e9-9f2e-ed5d95412aca
+     TOKENMETRICS_API_URL=https://api.tokenmetrics.com/v2
+     ```
+   - Optional: `NEXT_PUBLIC_WS_URL` (if you want WebSocket support)
+
+4. **Deploy**:
+   - Click "Deploy"
+   - Vercel will build and deploy automatically
+   - Your app will be live at `https://your-project.vercel.app`
+
+5. **Verify Deployment**:
+   - Check that environment variables are set correctly
+   - Test the app - it should fetch real data from TokenMetrics API
 
 ### Other Platforms
 
