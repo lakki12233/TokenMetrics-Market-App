@@ -2,26 +2,45 @@
 
 ## Quick Deploy to Vercel
 
-1. **Push to GitHub**:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin <your-github-repo-url>
-   git push -u origin main
-   ```
+✅ **Step 1: Code is already on GitHub**
+   - Repository: https://github.com/lakki12233/TokenMetrics-Market-App.git
+   - All code has been pushed successfully
 
-2. **Deploy to Vercel**:
-   - Go to [vercel.com](https://vercel.com)
-   - Click "New Project"
-   - Import your GitHub repository
-   - Add environment variables:
-     - `TOKENMETRICS_API_KEY`
-     - `TOKENMETRICS_API_URL`
-     - `NEXT_PUBLIC_WS_URL` (optional)
+**Step 2: Deploy to Vercel**
+
+1. Go to [vercel.com](https://vercel.com) and sign in with GitHub
+
+2. Click **"Add New Project"** or **"Import Project"**
+
+3. Select your repository: `lakki12233/TokenMetrics-Market-App`
+
+4. **Configure Project**:
+   - Framework Preset: Next.js (auto-detected)
+   - Root Directory: `./` (default)
+   - Build Command: `npm run build` (auto-detected)
+   - Output Directory: `.next` (auto-detected)
+
+5. **Add Environment Variables** (CRITICAL):
+   - Click "Environment Variables"
+   - Add these variables:
+     ```
+     TOKENMETRICS_API_KEY = tm-a552af75-095c-45e9-9f2e-ed5d95412aca
+     TOKENMETRICS_API_URL = https://api.tokenmetrics.com/v2
+     ```
+   - Make sure to select all environments: Production, Preview, Development
+   - Click "Save"
+
+6. **Deploy**:
    - Click "Deploy"
+   - Wait for build to complete (usually 1-2 minutes)
+   - Your app will be live at `https://token-metrics-market-app.vercel.app` (or similar)
 
-3. **Your app will be live** at `https://your-project.vercel.app`
+**Step 3: Verify Deployment**
+
+1. Visit your deployed URL
+2. Check that data is loading (should show real TokenMetrics data)
+3. Check browser console for any errors
+4. Verify rate limit counter is working
 
 ## Environment Variables
 
