@@ -216,7 +216,7 @@ export default function Home() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                {'name' in selectedItem ? selectedItem.name : selectedItem.name}
+                {selectedItem.name}
                 {'symbol' in selectedItem && selectedItem.symbol && (
                   <span style={{ marginLeft: '0.5rem', fontSize: '1rem', color: '#666' }}>
                     ({selectedItem.symbol})
