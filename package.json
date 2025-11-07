@@ -1,0 +1,29 @@
+{
+  "name": "market-app-tokenmetrics",
+  "version": "1.0.0",
+  "description": "Web app for listing Indices/Indicators with 30-day detail view",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@types/ws": "^8.5.10",
+    "dotenv": "^17.2.3",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4",
+    "typescript": "^5.3.3"
+  }
+}
