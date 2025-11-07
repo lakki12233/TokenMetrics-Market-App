@@ -24,9 +24,10 @@
    - Click "Environment Variables"
    - Add these variables:
      ```
-     TOKENMETRICS_API_KEY = tm-a552af75-095c-45e9-9f2e-ed5d95412aca
+     TOKENMETRICS_API_KEY = your_api_key_here
      TOKENMETRICS_API_URL = https://api.tokenmetrics.com/v2
      ```
+   - **Important**: Replace `your_api_key_here` with your actual TokenMetrics API key
    - Make sure to select all environments: Production, Preview, Development
    - Click "Save"
 

@@ -22,7 +22,7 @@ Repository: https://github.com/lakki12233/TokenMetrics-Market-App.git
 
    **Variable 1:**
    - Name: `TOKENMETRICS_API_KEY`
-   - Value: `tm-a552af75-095c-45e9-9f2e-ed5d95412aca`
+   - Value: `your_api_key_here` (replace with your actual API key)
    - Environments: ✅ Production ✅ Preview ✅ Development
 
    **Variable 2:**
