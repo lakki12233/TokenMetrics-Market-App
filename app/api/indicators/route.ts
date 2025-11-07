@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
           // This provides trading signals that we can use as "indicators"
           const endpoint = '/trading-signals';
           console.log(`[API] Fetching from endpoint: ${endpoint}`);
-          const response = await apiClient.request(endpoint);
+          const response: any = await apiClient.request(endpoint);
           
           // TokenMetrics API returns: { success: true, message: "...", length: N, data: [...] }
           // API fields: TOKEN_ID, TOKEN_NAME, TOKEN_SYMBOL, DATE, TRADING_SIGNAL, TOKEN_TREND, TM_TRADER_GRADE, TM_INVESTOR_GRADE

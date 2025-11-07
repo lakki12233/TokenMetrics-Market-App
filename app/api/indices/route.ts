@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
           // This provides token data that we can use as "indices"
           const endpoint = '/tokens';
           console.log(`[API] Fetching from endpoint: ${endpoint}`);
-          const response = await apiClient.request(endpoint);
+          const response: any = await apiClient.request(endpoint);
           
           // TokenMetrics API returns: { success: true, message: "...", length: N, data: [...] }
           // API fields: TOKEN_ID, TOKEN_NAME, TOKEN_SYMBOL, CURRENT_PRICE, MARKET_CAP, PRICE_CHANGE_PERCENTAGE_24H_IN_CURRENCY
