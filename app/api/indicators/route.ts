@@ -111,11 +111,13 @@ export async function GET(request: NextRequest) {
         });
         
         // Find the specific coin
-        const coin = marketResponse.data?.find((c: any) => 
-          c.id === coinGeckoId || 
-          c.symbol?.toLowerCase() === coinGeckoId.toLowerCase() ||
-          c.name?.toLowerCase().includes(coinGeckoId.toLowerCase())
-        );
+        const coin = Array.isArray(marketResponse.data) 
+          ? marketResponse.data.find((c: any) => 
+              c.id === coinGeckoId || 
+              c.symbol?.toLowerCase() === coinGeckoId.toLowerCase() ||
+              c.name?.toLowerCase().includes(coinGeckoId.toLowerCase())
+            )
+          : undefined;
         
         if (coin) {
           const price = coin.current_price || 0;

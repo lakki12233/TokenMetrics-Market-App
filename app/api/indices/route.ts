@@ -100,11 +100,13 @@ export async function GET(request: NextRequest) {
         });
         
         // Find the specific coin
-        const coin = marketResponse.data?.find((c: any) => 
-          c.id === coinId || 
-          c.symbol?.toLowerCase() === coinId.toLowerCase() ||
-          c.name?.toLowerCase().includes(coinId.toLowerCase())
-        );
+        const coin = Array.isArray(marketResponse.data) 
+          ? marketResponse.data.find((c: any) => 
+              c.id === coinId || 
+              c.symbol?.toLowerCase() === coinId.toLowerCase() ||
+              c.name?.toLowerCase().includes(coinId.toLowerCase())
+            )
+          : undefined;
         
         if (coin) {
           const price = coin.current_price || 0;
