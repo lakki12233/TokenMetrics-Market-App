@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
           // Try to get specific indicator from API
           console.log(`[API] Attempting to fetch indicator: ${indicatorId}`);
           const response: any = await apiClient.request(`/indicators/${indicatorId}${includeDetails ? '?details=true' : ''}`);
-          console.log(`[API] Response received for indicator ${indicatorId}:`, response ? 'Success' : 'No data');
+          console.log(`[API] Response received for indicator ${indicatorId}:`, response ? 'Success' : 'No data', `Cache: ${response?.cacheStatus || 'N/A'}`);
           
           if (response && response.data) {
             let result = response.data;
@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({
               data: result,
               timestamp: new Date().toISOString(),
+              cacheStatus: response.cacheStatus || 'MISS',
             });
           }
         } else {
@@ -125,10 +126,12 @@ export async function GET(request: NextRequest) {
           // This provides trading signals that we can use as "indicators"
           const endpoint = '/trading-signals';
           console.log(`[API] Fetching from endpoint: ${endpoint}`);
-          const response: any = await apiClient.request(endpoint);
+          const apiResponse: any = await apiClient.request(endpoint);
+          console.log(`[API] Cache status: ${apiResponse?.cacheStatus || 'N/A'}`);
           
           // TokenMetrics API returns: { success: true, message: "...", length: N, data: [...] }
           // API fields: TOKEN_ID, TOKEN_NAME, TOKEN_SYMBOL, DATE, TRADING_SIGNAL, TOKEN_TREND, TM_TRADER_GRADE, TM_INVESTOR_GRADE
+          const response = apiResponse.data;
           if (response && response.success && response.data && Array.isArray(response.data)) {
             // Transform trading signals data to match our Indicator format
             const signals = response.data;
@@ -154,6 +157,7 @@ export async function GET(request: NextRequest) {
               data: indicators,
               timestamp: new Date().toISOString(),
               source: 'api', // Flag to indicate real API data
+              cacheStatus: apiResponse.cacheStatus || 'MISS',
             });
           } else {
             throw new Error('Invalid API response format');
@@ -190,12 +194,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           data: detail,
           timestamp: new Date().toISOString(),
+          cacheStatus: 'N/A', // Mock data doesn't use cache
         });
       }
 
       return NextResponse.json({
         data: indicator,
         timestamp: new Date().toISOString(),
+        cacheStatus: 'N/A', // Mock data doesn't use cache
       });
     }
 
@@ -206,6 +212,7 @@ export async function GET(request: NextRequest) {
       data: indicators,
       timestamp: new Date().toISOString(),
       source: 'mock', // Flag to indicate mock data
+      cacheStatus: 'N/A', // Mock data doesn't use cache
     });
   } catch (error: any) {
     console.error('API Error:', error);

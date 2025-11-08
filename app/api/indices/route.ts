@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
           // Try to get specific index from API
           console.log(`[API] Attempting to fetch index: ${indexId}`);
           const response: any = await apiClient.request(`/indices/${indexId}${includeDetails ? '?details=true' : ''}`);
-          console.log(`[API] Response received for index ${indexId}:`, response ? 'Success' : 'No data');
+          console.log(`[API] Response received for index ${indexId}:`, response ? 'Success' : 'No data', `Cache: ${response?.cacheStatus || 'N/A'}`);
           
           if (response && response.data) {
             let result = response.data;
@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({
               data: result,
               timestamp: new Date().toISOString(),
+              cacheStatus: response.cacheStatus || 'MISS',
             });
           }
         } else {
@@ -115,10 +116,12 @@ export async function GET(request: NextRequest) {
           // This provides token data that we can use as "indices"
           const endpoint = '/tokens';
           console.log(`[API] Fetching from endpoint: ${endpoint}`);
-          const response: any = await apiClient.request(endpoint);
+          const apiResponse: any = await apiClient.request(endpoint);
+          console.log(`[API] Cache status: ${apiResponse?.cacheStatus || 'N/A'}`);
           
           // TokenMetrics API returns: { success: true, message: "...", length: N, data: [...] }
           // API fields: TOKEN_ID, TOKEN_NAME, TOKEN_SYMBOL, CURRENT_PRICE, MARKET_CAP, PRICE_CHANGE_PERCENTAGE_24H_IN_CURRENCY
+          const response = apiResponse.data;
           if (response && response.success && response.data && Array.isArray(response.data)) {
             // Transform token data to match our Index format
             const tokens = response.data;
@@ -142,6 +145,7 @@ export async function GET(request: NextRequest) {
               data: indices,
               timestamp: new Date().toISOString(),
               source: 'api', // Flag to indicate real API data
+              cacheStatus: apiResponse.cacheStatus || 'MISS',
             });
           } else {
             throw new Error('Invalid API response format');
@@ -175,15 +179,17 @@ export async function GET(request: NextRequest) {
           dailyData,
         };
         
-        return NextResponse.json({
-          data: detail,
-          timestamp: new Date().toISOString(),
-        });
+      return NextResponse.json({
+        data: detail,
+        timestamp: new Date().toISOString(),
+        cacheStatus: 'N/A', // Mock data doesn't use cache
+      });
       }
 
       return NextResponse.json({
         data: index,
         timestamp: new Date().toISOString(),
+        cacheStatus: 'N/A', // Mock data doesn't use cache
       });
     }
 
@@ -194,6 +200,7 @@ export async function GET(request: NextRequest) {
       data: indices,
       timestamp: new Date().toISOString(),
       source: 'mock', // Flag to indicate mock data
+      cacheStatus: 'N/A', // Mock data doesn't use cache
     });
   } catch (error: any) {
     console.error('API Error:', error);

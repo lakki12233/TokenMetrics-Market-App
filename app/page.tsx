@@ -14,6 +14,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rateLimitInfo, setRateLimitInfo] = useState<any>(null);
+  const [cacheStatus, setCacheStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -42,8 +43,9 @@ export default function Home() {
       const response = await fetch('/api/indices');
       if (!response.ok) throw new Error('Failed to fetch indices');
       const result = await response.json();
-      console.log('[Frontend] Received indices:', result.source || 'unknown source', result.data?.length || 0, 'items');
+      console.log('[Frontend] Received indices:', result.source || 'unknown source', result.data?.length || 0, 'items', 'Cache:', result.cacheStatus || 'N/A');
       setIndices(result.data);
+      setCacheStatus(result.cacheStatus || null);
       setError(null);
     } catch (err: any) {
       console.error('[Frontend] Error fetching indices:', err);
@@ -60,8 +62,9 @@ export default function Home() {
       const response = await fetch('/api/indicators');
       if (!response.ok) throw new Error('Failed to fetch indicators');
       const result = await response.json();
-      console.log('[Frontend] Received indicators:', result.source || 'unknown source', result.data?.length || 0, 'items');
+      console.log('[Frontend] Received indicators:', result.source || 'unknown source', result.data?.length || 0, 'items', 'Cache:', result.cacheStatus || 'N/A');
       setIndicators(result.data);
+      setCacheStatus(result.cacheStatus || null);
       setError(null);
     } catch (err: any) {
       console.error('[Frontend] Error fetching indicators:', err);
@@ -148,6 +151,24 @@ export default function Home() {
           Rate Limit: <strong>{rateLimitInfo.requestsLastMinute}/{rateLimitInfo.maxPerMinute}</strong> requests/min | 
           Monthly: <strong>{rateLimitInfo.monthlyCalls}/{rateLimitInfo.maxMonthly}</strong> calls
           {rateLimitInfo.note && <span style={{ marginLeft: '1rem', fontSize: '0.8rem', color: '#999' }}>({rateLimitInfo.note})</span>}
+        </div>
+      )}
+
+      {cacheStatus && (
+        <div className="cache-status" style={{
+          padding: '0.75rem 1rem',
+          margin: '0.5rem auto',
+          maxWidth: '1200px',
+          backgroundColor: cacheStatus === 'HIT' ? '#e8f5e9' : cacheStatus === 'MISS' ? '#fff3e0' : '#f5f5f5',
+          border: `1px solid ${cacheStatus === 'HIT' ? '#4caf50' : cacheStatus === 'MISS' ? '#ff9800' : '#ccc'}`,
+          borderRadius: '4px',
+          fontSize: '0.9rem',
+          color: cacheStatus === 'HIT' ? '#2e7d32' : cacheStatus === 'MISS' ? '#e65100' : '#666',
+          fontWeight: 500,
+        }}>
+          Cache Status: <strong>{cacheStatus}</strong>
+          {cacheStatus === 'HIT' && <span style={{ marginLeft: '0.5rem' }}>⚡ (served from cache)</span>}
+          {cacheStatus === 'MISS' && <span style={{ marginLeft: '0.5rem' }}>🔄 (fetched from API)</span>}
         </div>
       )}
 

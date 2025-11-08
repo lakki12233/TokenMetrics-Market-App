@@ -116,7 +116,7 @@ class APIClient {
     });
   }
 
-  async request<T>(endpoint: string, params?: any): Promise<T> {
+  async request<T>(endpoint: string, params?: any): Promise<{ data: T; cacheStatus: 'HIT' | 'MISS' }> {
     if (!this.client) {
       throw new Error('API client not initialized. TOKENMETRICS_API_KEY is required for real API calls.');
     }
@@ -126,7 +126,7 @@ class APIClient {
     // Check cache first
     const cached = this.getCachedData(cacheKey);
     if (cached !== null) {
-      return cached as T;
+      return { data: cached as T, cacheStatus: 'HIT' };
     }
 
     // Check rate limits
@@ -146,7 +146,7 @@ class APIClient {
       // Cache the response
       this.setCache(cacheKey, response.data);
 
-      return response.data as T;
+      return { data: response.data as T, cacheStatus: 'MISS' };
     } catch (error: any) {
       if (axios.isAxiosError(error)) {
         throw new Error(`API Error: ${error.response?.status} - ${error.message}`);
