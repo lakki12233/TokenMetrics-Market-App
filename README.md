@@ -6,7 +6,8 @@ A modern web application for displaying cryptocurrency Indices and Indicators wi
 
 - 📊 **Indices & Indicators Display**: View key market indices and technical indicators
 - 📈 **30-Day Detail View**: Interactive charts and data tables showing 30 days of historical data
-- ⚡ **Smart Caching**: Responses cached for 60-120 seconds to minimize API calls
+- ⚡ **Smart Caching**: Responses cached for 60-120 seconds with visible HIT/MISS indicators
+- 🪙 **CoinGecko Integration**: Uses free CoinGecko API for real-time cryptocurrency data (no API key needed!)
 - 🚦 **Rate Limiting**: Respects API plan limits (20 requests/minute, 500 calls/month)
 - 🔄 **WebSocket Support**: Optional real-time data streaming (when configured)
 - 🎨 **Modern UI**: Beautiful, responsive design with smooth animations
@@ -23,7 +24,8 @@ A modern web application for displaying cryptocurrency Indices and Indicators wi
 ## Prerequisites
 
 - Node.js 18+ and npm/yarn
-- TokenMetrics API key
+- **No API key required!** The app uses CoinGecko API (free, no key needed) by default
+- TokenMetrics API key (optional, for fallback)
 
 ## Environment Setup
 
@@ -40,15 +42,17 @@ A modern web application for displaying cryptocurrency Indices and Indicators wi
    yarn install
    ```
 
-3. **Configure environment variables**:
+3. **Configure environment variables** (Optional):
    
-   Create a `.env.local` file in the root directory:
+   The app works **out of the box** using CoinGecko API (free, no API key required)!
+   
+   If you want to use TokenMetrics API as a fallback, create a `.env.local` file:
    ```env
-   # Required: TokenMetrics API Key
+   # Optional: TokenMetrics API Key (for fallback)
    # Get your free API key from: https://developers.tokenmetrics.com
    TOKENMETRICS_API_KEY=your_api_key_here
    
-   # Required: TokenMetrics API Base URL (v2)
+   # Optional: TokenMetrics API Base URL (v2)
    TOKENMETRICS_API_URL=https://api.tokenmetrics.com/v2
    
    # Optional: WebSocket URL for real-time updates
@@ -56,10 +60,10 @@ A modern web application for displaying cryptocurrency Indices and Indicators wi
    ```
 
    **Important Notes**:
+   - **No API key needed!** The app uses CoinGecko API by default (100% free, no registration)
    - The `.env.local` file is gitignored for security (never commit API keys!)
-   - Get your free API key from [TokenMetrics Developer Portal](https://developers.tokenmetrics.com)
-   - Free plan includes: 500 API calls/month, 20 requests/minute
-   - The app uses provider-fallback pattern: tries real API first, falls back to mock data if unavailable
+   - TokenMetrics free plan has limited endpoints - that's why we use CoinGecko for demonstration
+   - The app uses provider-fallback pattern: CoinGecko → TokenMetrics → Mock Data
 
 4. **Run the development server**:
    ```bash
@@ -251,9 +255,11 @@ The application enforces **two levels of rate limiting** to respect TokenMetrics
 
 - ✅ **Reduces API calls by 80-90%** (depending on traffic patterns)
 - ✅ **Faster response times** (cached responses are instant)
+- ✅ **Visible Cache Status** - HIT (green) / MISS (orange) indicators on screen
 - ✅ **Prevents hitting rate limits** (stays well within free tier)
-- ✅ **Cost-effective** (minimal API usage)
+- ✅ **Cost-effective** (minimal API usage, using free CoinGecko API)
 - ✅ **Better user experience** (faster page loads)
+- ✅ **Demonstrates Server-Side Caching** - Cache status proves caching works (browser DevTools won't show it)
 
 ### Cache Invalidation
 
@@ -295,10 +301,11 @@ The application uses a **provider-fallback pattern** for maximum reliability:
 ```
 
 **Benefits**:
-- ✅ App works even without API key (uses mock data)
-- ✅ App works even if API is down (graceful degradation)
-- ✅ App works even if API key is invalid (falls back to mock)
-- ✅ Clear source indication (`source: 'api'` or `source: 'mock'`)
+- ✅ App works without any API key (uses CoinGecko by default)
+- ✅ App works even if CoinGecko is down (falls back to TokenMetrics or mock data)
+- ✅ App works even if TokenMetrics API key is invalid (falls back to mock data)
+- ✅ Clear source indication (`source: 'coingecko'`, `'api'`, or `'mock'`)
+- ✅ **Cache HIT/MISS visible on screen** - proves server-side caching is working
 
 ### Configuration
 
@@ -421,7 +428,8 @@ market-app_tokenmetrics/
 ├── components/
 │   └── WebSocketStatus.tsx       # WebSocket connection status
 ├── lib/
-│   ├── api-client.ts             # API client with caching & rate limiting
+│   ├── api-client.ts             # TokenMetrics API client with caching & rate limiting
+│   ├── coingecko-client.ts       # CoinGecko API client (free, no key required)
 │   ├── types.ts                  # TypeScript type definitions
 │   └── websocket-client.ts       # WebSocket client
 ├── .env.example                  # Environment variables template
@@ -436,15 +444,35 @@ market-app_tokenmetrics/
 
 ### Real API Integration
 
-The application **automatically uses real TokenMetrics API data** when:
-- API key is configured in `.env.local`
-- API key is valid and has access to endpoints
-- API endpoints are accessible
+The application uses **CoinGecko API** (free, no API key required) to demonstrate caching and real-time data:
+
+**Why CoinGecko?**
+- ✅ **100% Free** - No API key or registration required
+- ✅ **No Rate Limits** - Generous free tier (10-50 calls/minute)
+- ✅ **Real-Time Data** - Live cryptocurrency prices and market data
+- ✅ **Perfect for Demo** - Allows us to demonstrate cache HIT/MISS effectively
+
+**Why Not TokenMetrics Only?**
+- TokenMetrics free plan has **limited endpoints** - not all endpoints are available
+- Some endpoints require paid plans
+- CoinGecko provides comprehensive free access to demonstrate all features
+
+**API Priority (Provider-Fallback Pattern)**:
+1. **CoinGecko API** (first priority - always works, no key needed)
+   - `/coins/markets` - Top cryptocurrencies by market cap
+   - Real-time prices, 24h changes, market data
+2. **TokenMetrics API** (fallback if configured)
+   - `/tokens` endpoint (if available on your plan)
+   - `/trading-signals` endpoint (if available on your plan)
+3. **Mock Data** (final fallback)
+   - Always available if both APIs fail
+   - Ensures app never breaks
 
 **Current Implementation**:
-- **Indices**: Uses `/tokens` endpoint (available on free plan)
-- **Indicators**: Uses `/trading-signals` endpoint (available on free plan)
-- **Provider-Fallback**: Automatically falls back to mock data if API fails
+- **Indices**: Uses CoinGecko `/coins/markets` endpoint (top 10 cryptocurrencies)
+- **Indicators**: Uses CoinGecko price movement data (24h changes as indicators)
+- **Cache Status**: Visible HIT/MISS indicators for all API calls
+- **Provider-Fallback**: CoinGecko → TokenMetrics → Mock Data
 
 ### Mock Data (Fallback)
 

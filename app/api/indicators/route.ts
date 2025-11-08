@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAPIClient } from '@/lib/api-client';
+import { getCoinGeckoClient } from '@/lib/coingecko-client';
 import { Indicator, IndicatorDetail, DailyDataPoint } from '@/lib/types';
 
 // Mock data generator for demonstration
@@ -82,7 +83,117 @@ export async function GET(request: NextRequest) {
     const indicatorId = searchParams.get('id');
     const includeDetails = searchParams.get('details') === 'true';
 
-    // Try to get API client and make real API call
+    // Try CoinGecko API first (free, no API key required)
+    try {
+      const coingeckoClient = getCoinGeckoClient();
+      
+      if (indicatorId) {
+        // Get specific coin data for indicator
+        console.log(`[CoinGecko] Fetching indicator data for: ${indicatorId}`);
+        
+        // Extract coin ID from indicator ID (e.g., "rsi-btc" -> "bitcoin")
+        const coinIdMap: Record<string, string> = {
+          'rsi-btc': 'bitcoin',
+          'macd-btc': 'bitcoin',
+          'bollinger-btc': 'bitcoin',
+        };
+        
+        const coinId = coinIdMap[indicatorId.toLowerCase()] || indicatorId.toLowerCase().replace(/^(rsi|macd|bollinger)-/, '');
+        const coinGeckoId = coinId === 'btc' ? 'bitcoin' : coinId;
+        
+        // Get coin market data - fetch top coins and find the one we need
+        const marketResponse = await coingeckoClient.request('/coins/markets', {
+          vs_currency: 'usd',
+          order: 'market_cap_desc',
+          per_page: 100,
+          page: 1,
+          price_change_percentage: '24h',
+        });
+        
+        // Find the specific coin
+        const coin = marketResponse.data?.find((c: any) => 
+          c.id === coinGeckoId || 
+          c.symbol?.toLowerCase() === coinGeckoId.toLowerCase() ||
+          c.name?.toLowerCase().includes(coinGeckoId.toLowerCase())
+        );
+        
+        if (coin) {
+          const price = coin.current_price || 0;
+          const changePercent = coin.price_change_percentage_24h || 0;
+          
+          // Determine signal based on price change
+          let signal: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+          if (changePercent > 2) signal = 'bullish';
+          else if (changePercent < -2) signal = 'bearish';
+          
+          // Generate indicator value based on price movement
+          const indicatorValue = Math.abs(changePercent) * 10; // Scale for indicator display
+          
+          let result: IndicatorDetail = {
+            id: indicatorId,
+            name: `${indicatorId.toUpperCase()} - ${coin.name || coinId}`,
+            category: 'Price Movement',
+            value: indicatorValue,
+            signal: signal,
+            timestamp: new Date().toISOString(),
+            dailyData: [],
+          };
+          
+          if (includeDetails) {
+            result.dailyData = generate30DayData(indicatorValue, signal);
+          }
+          
+          console.log(`[CoinGecko] Returning indicator data for ${indicatorId}`);
+          return NextResponse.json({
+            data: result,
+            timestamp: new Date().toISOString(),
+            source: 'coingecko',
+            cacheStatus: marketResponse.cacheStatus || 'MISS',
+          });
+        }
+      } else {
+        // Get top coins and create indicators from them
+        console.log('[CoinGecko] Fetching top coins for indicators');
+        const marketResponse = await coingeckoClient.request('/coins/markets', {
+          vs_currency: 'usd',
+          order: 'market_cap_desc',
+          per_page: 10,
+          page: 1,
+          price_change_percentage: '24h',
+        });
+        
+        if (marketResponse.data && Array.isArray(marketResponse.data)) {
+          const indicators: Indicator[] = marketResponse.data.map((coin: any, index: number) => {
+            const changePercent = coin.price_change_percentage_24h || 0;
+            let signal: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+            if (changePercent > 2) signal = 'bullish';
+            else if (changePercent < -2) signal = 'bearish';
+            
+            return {
+              id: `${coin.id || coin.symbol?.toLowerCase() || `coin-${index}`}`,
+              name: `Price Movement - ${coin.name || 'Unknown'}`,
+              category: 'Price Movement',
+              value: Math.abs(changePercent) * 10,
+              signal: signal,
+              timestamp: new Date().toISOString(),
+            };
+          });
+          
+          console.log(`[CoinGecko] Returning ${indicators.length} indicators`);
+          return NextResponse.json({
+            data: indicators,
+            timestamp: new Date().toISOString(),
+            source: 'coingecko',
+            cacheStatus: marketResponse.cacheStatus || 'MISS',
+          });
+        }
+      }
+    } catch (coingeckoError: any) {
+      console.log('[CoinGecko] API call failed, trying TokenMetrics:', coingeckoError.message);
+      // Fall through to TokenMetrics or mock data
+    }
+
+    // Try TokenMetrics API if configured
     let apiClient;
     let useRealAPI = false;
     
@@ -90,7 +201,7 @@ export async function GET(request: NextRequest) {
       apiClient = getAPIClient();
       useRealAPI = true;
     } catch (error) {
-      console.log('API client not available, using mock data');
+      console.log('TokenMetrics API client not available');
     }
 
     // Try to fetch from real API if available
